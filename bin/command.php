@@ -49,11 +49,11 @@ class Command {
 	 * Generates a manifest document of all handbook pages.
 	 *
 	 * Pages are discovered in the repository root and in its sub-directories
-	 * (for example `version/`). The `title`, `slug`, `parent` and `order`
-	 * values of pages already in the manifest are preserved, so the curated
-	 * handbook hierarchy is not lost when the manifest is regenerated. New
-	 * pages take their title from the `# Heading` on the first line of the
-	 * file; set their `parent` and `order` by hand if needed.
+	 * (for example `version/`). Titles are taken from the `# Heading` on the
+	 * first line of each file. The `slug`, `parent` and `order` values of
+	 * pages already in the manifest are preserved, so the curated handbook
+	 * hierarchy is not lost when the manifest is regenerated; set them by
+	 * hand for new pages if needed.
 	 *
 	 * @subcommand gen-hb-manifest
 	 */
@@ -76,8 +76,9 @@ class Command {
 			);
 
 			if ( isset( $existing[ $key ] ) && is_array( $existing[ $key ] ) ) {
-				// Keep the hand-maintained values of existing pages.
-				foreach ( array( 'title', 'slug', 'parent', 'order' ) as $field ) {
+				// Keep the hand-maintained values of existing pages. The title is
+				// always refreshed from the page heading, as before.
+				foreach ( array( 'slug', 'parent', 'order' ) as $field ) {
 					if ( array_key_exists( $field, $existing[ $key ] ) ) {
 						$entry[ $field ] = $existing[ $key ][ $field ];
 					}
