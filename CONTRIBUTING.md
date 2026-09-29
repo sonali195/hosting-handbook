@@ -38,4 +38,4 @@ There's an included WP-CLI command to take care of this. To run it, from the clo
 
 The manifest should get created inside the repo, in `/bin/handbook-manifest.json`.
 
-Pages in the repository root and in sub-directories (such as `version/`) are included. For pages that are already in the manifest, the `title`, `slug`, `parent` and `order` values are kept as they are. New pages get their title from the `# Heading` on the first line of the file, so edit the manifest afterwards to set their `parent`, `order` or a shorter `slug` if needed.
+Pages in the repository root and in sub-directories (such as `version/`) are included, and each page's title is taken from the `# Heading` on its first line. For pages that are already in the manifest, the `slug`, `parent` and `order` values are kept as they are, so edit the manifest afterwards to set them for new pages if needed.
