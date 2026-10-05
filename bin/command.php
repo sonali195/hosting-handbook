@@ -61,11 +61,17 @@ class Command {
 		$manifest_file = HOSTING_HANDBOOK_PATH . '/bin/handbook-manifest.json';
 		$existing      = self::read_manifest( $manifest_file );
 
-		$pages = array();
+		$pages   = array();
+		$sources = array();
 		foreach ( self::find_pages() as $relative_path => $page ) {
 			$key = $page['key'];
-			if ( isset( $pages[ $key ] ) ) {
-				WP_CLI::error( sprintf( "Duplicate manifest key '%s' for %s and %s.", $key, $pages[ $key ]['markdown_source'], $relative_path ) );
+			if ( isset( $sources[ $key ] ) ) {
+				WP_CLI::error( sprintf( "Duplicate manifest key '%s' for %s and %s.", $key, $sources[ $key ], $relative_path ) );
+			}
+			$sources[ $key ] = $relative_path;
+
+			if ( '' === $page['title'] ) {
+				WP_CLI::warning( sprintf( "No '# Heading' on the first line of %s; its title is empty.", $relative_path ) );
 			}
 
 			$entry = array(
@@ -96,7 +102,18 @@ class Command {
 				unset( $pages[ $key ] );
 			}
 		}
-		$manifest = array_merge( $manifest, $pages );
+
+		// New pages get the next free `order` among their siblings, so the
+		// importer always has one. Slug and order can then be adjusted by hand.
+		$added = array();
+		foreach ( $pages as $key => $entry ) {
+			$entry['order']   = self::next_order( $manifest, $entry['parent'] );
+			$manifest[ $key ] = $entry;
+			$added[]          = sprintf( '%s (slug: %s, parent: %s, order: %d)', $sources[ $key ], $entry['slug'], null === $entry['parent'] ? 'null' : $entry['parent'], $entry['order'] );
+		}
+		if ( $added ) {
+			WP_CLI::warning( sprintf( "Added %d new page(s) to the manifest. Review their slug and order by hand:\n  - %s", count( $added ), implode( "\n  - ", $added ) ) );
+		}
 
 		// Match the two-space indentation used by the committed manifest.
 		$json = preg_replace_callback(
@@ -107,10 +124,30 @@ class Command {
 			json_encode( $manifest, JSON_PRETTY_PRINT )
 		);
 
+		// .editorconfig sets insert_final_newline = true.
+		$json .= "\n";
+
 		if ( false === file_put_contents( $manifest_file, $json ) ) {
 			WP_CLI::error( 'Unable to write bin/handbook-manifest.json' );
 		}
 		WP_CLI::success( 'Generated bin/handbook-manifest.json' );
+	}
+
+	/**
+	 * Gets the next free `order` value among pages with the same parent.
+	 *
+	 * @param array       $manifest Entries added so far.
+	 * @param string|null $parent   Parent of the new page.
+	 * @return int One more than the highest sibling order, or 1 if there are no siblings.
+	 */
+	private static function next_order( $manifest, $parent ) {
+		$max = 0;
+		foreach ( $manifest as $entry ) {
+			if ( $entry['parent'] === $parent && isset( $entry['order'] ) && $entry['order'] > $max ) {
+				$max = $entry['order'];
+			}
+		}
+		return (int) $max + 1;
 	}
 
 	/**
