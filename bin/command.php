@@ -52,8 +52,9 @@ class Command {
 	 * (for example `version/`). Titles are taken from the `# Heading` on the
 	 * first line of each file. The `slug`, `parent` and `order` values of
 	 * pages already in the manifest are preserved, so the curated handbook
-	 * hierarchy is not lost when the manifest is regenerated; set them by
-	 * hand for new pages if needed.
+	 * hierarchy is not lost when the manifest is regenerated. New pages are
+	 * appended with the file name as their slug and the next free `order`
+	 * under their parent; pages whose files were deleted are removed.
 	 *
 	 * @subcommand gen-hb-manifest
 	 */
@@ -115,13 +116,32 @@ class Command {
 			WP_CLI::warning( sprintf( "Added %d new page(s) to the manifest. Review their slug and order by hand:\n  - %s", count( $added ), implode( "\n  - ", $added ) ) );
 		}
 
+		// Pages whose files no longer exist are dropped from the manifest.
+		$removed = array_keys( array_diff_key( $existing, $sources ) );
+		if ( $removed ) {
+			WP_CLI::warning( sprintf( "Removed %d page(s) whose files no longer exist:\n  - %s", count( $removed ), implode( "\n  - ", $removed ) ) );
+		}
+
+		// The importer looks up each parent by its manifest key, so a missing
+		// parent (e.g. a sub-directory without an index.md) breaks the import.
+		foreach ( $manifest as $key => $entry ) {
+			if ( null !== $entry['parent'] && ! isset( $manifest[ $entry['parent'] ] ) ) {
+				WP_CLI::warning( sprintf( "Parent '%s' of %s is not in the manifest.", $entry['parent'], $sources[ $key ] ) );
+			}
+		}
+
+		$json = json_encode( $manifest, JSON_PRETTY_PRINT );
+		if ( false === $json ) {
+			WP_CLI::error( sprintf( 'Unable to encode the manifest as JSON: %s', json_last_error_msg() ) );
+		}
+
 		// Match the two-space indentation used by the committed manifest.
 		$json = preg_replace_callback(
 			'/^(?: {4})+/m',
 			function ( $matches ) {
 				return str_repeat( '  ', strlen( $matches[0] ) / 4 );
 			},
-			json_encode( $manifest, JSON_PRETTY_PRINT )
+			$json
 		);
 
 		// .editorconfig sets insert_final_newline = true.
