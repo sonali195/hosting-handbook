@@ -181,9 +181,14 @@ class Command {
 			return array();
 		}
 
-		$manifest = json_decode( file_get_contents( $manifest_file ), true );
+		$contents = file_get_contents( $manifest_file );
+		if ( false === $contents ) {
+			WP_CLI::error( 'Unable to read bin/handbook-manifest.json' );
+		}
+
+		$manifest = json_decode( $contents, true );
 		if ( ! is_array( $manifest ) ) {
-			WP_CLI::error( 'bin/handbook-manifest.json is not valid JSON; fix or remove it before regenerating.' );
+			WP_CLI::error( sprintf( 'bin/handbook-manifest.json is not valid JSON (%s); fix or remove it before regenerating.', json_last_error_msg() ) );
 		}
 
 		return $manifest;
