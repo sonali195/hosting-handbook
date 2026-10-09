@@ -203,7 +203,11 @@ class Command {
 		$pages = array();
 
 		// Top-level pages.
-		foreach ( glob( HOSTING_HANDBOOK_PATH . '/*.md' ) as $file ) {
+		$top_files = glob( HOSTING_HANDBOOK_PATH . '/*.md' );
+		if ( false === $top_files ) {
+			WP_CLI::error( 'Unable to read markdown files in the handbook repository.' );
+		}
+		foreach ( $top_files as $file ) {
 			$slug = basename( $file, '.md' );
 			if ( in_array( $slug, self::IGNORED_FILES, true ) ) {
 				continue;
@@ -217,12 +221,23 @@ class Command {
 		}
 
 		// Pages in sub-directories, e.g. version/index.md and version/7-0-compatibility.md.
-		foreach ( glob( HOSTING_HANDBOOK_PATH . '/*', GLOB_ONLYDIR ) as $dir ) {
+		$dirs = glob( HOSTING_HANDBOOK_PATH . '/*', GLOB_ONLYDIR );
+		if ( false === $dirs ) {
+			WP_CLI::error( 'Unable to read directories in the handbook repository.' );
+		}
+		foreach ( $dirs as $dir ) {
 			$dir_name = basename( $dir );
 			if ( in_array( $dir_name, self::IGNORED_DIRS, true ) ) {
 				continue;
 			}
-			foreach ( glob( $dir . '/*.md' ) as $file ) {
+			if ( ! is_readable( $dir ) ) {
+				WP_CLI::error( sprintf( 'Unable to read directory %s', $dir ) );
+			}
+			$files = glob( $dir . '/*.md' );
+			if ( false === $files ) {
+				WP_CLI::error( sprintf( 'Unable to read directory %s', $dir ) );
+			}
+			foreach ( $files as $file ) {
 				$slug     = basename( $file, '.md' );
 				$is_index = 'index' === $slug;
 
