@@ -53,8 +53,9 @@ class Command {
 	 * first line of each file. The `slug`, `parent` and `order` values of
 	 * pages already in the manifest are preserved, so the curated handbook
 	 * hierarchy is not lost when the manifest is regenerated. New pages are
-	 * appended with the file name as their slug and the next free `order`
-	 * under their parent; pages whose files were deleted are removed.
+	 * appended with the file name as their slug (the directory name for a
+	 * sub-directory's `index.md`) and the next free `order` under their
+	 * parent; pages whose files were deleted are removed.
 	 *
 	 * @subcommand gen-hb-manifest
 	 */
@@ -236,6 +237,11 @@ class Command {
 			$files = glob( $dir . '/*.md' );
 			if ( false === $files ) {
 				WP_CLI::error( sprintf( 'Unable to read directory %s', $dir ) );
+			}
+			// List index.md first, so a new directory's parent page comes before its children in the manifest.
+			$index = $dir . '/index.md';
+			if ( in_array( $index, $files, true ) ) {
+				$files = array_merge( array( $index ), array_diff( $files, array( $index ) ) );
 			}
 			foreach ( $files as $file ) {
 				$slug     = basename( $file, '.md' );
